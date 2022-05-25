@@ -1,13 +1,18 @@
-#[macro_use] extern crate rocket;
-use rocket::{Rocket, Build};
+#[macro_use]
+extern crate rocket;
+use rocket::response::{status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
-use rocket::response::status;
+use rocket::{Build, Rocket};
+use rocket_dyn_templates::Template;
+
+mod about;
+mod home;
 
 #[derive(Debug, Deserialize)]
 #[serde(crate = "rocket::serde")]
 struct DeviceIdentity {
-    pub ip : String,
+    pub ip: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,20 +36,19 @@ struct LedPayload {
     status: bool,
 }
 
-
 #[get("/")]
-fn home() -> &'static str {
-    "Home page"
+fn index() -> Redirect {
+    Redirect::to("/home")
 }
 
 #[post("/temperature", format = "application/json", data = "<payload>")]
-fn temperature(payload : Json<TemperaturePayload>) -> status::Accepted<()> {
+fn temperature(payload: Json<TemperaturePayload>) -> status::Accepted<()> {
     println!("Received temperature:\n {:?}", payload);
     status::Accepted::<()>(None)
 }
 
 #[post("/humidity", format = "application/json", data = "<payload>")]
-fn humidity(payload : Json<HumidityPayload>) -> status::Accepted<()> {
+fn humidity(payload: Json<HumidityPayload>) -> status::Accepted<()> {
     println!("Received humidity:\n {:?}", payload);
     status::Accepted::<()>(None)
 }
@@ -57,7 +61,17 @@ fn led_status(payload: Json<LedPayload>) -> status::Accepted<()> {
 
 #[launch]
 fn rocket() -> Rocket<Build> {
-    println!("Launching rocket");
     rocket::build()
-        .mount("/", routes![home, temperature, humidity, led_status])
+    .attach(Template::fairing())
+    .mount(
+        "/",
+        routes![
+            index,
+            home::home,
+            about::about,
+            temperature,
+            humidity,
+            led_status
+        ],
+    )
 }
