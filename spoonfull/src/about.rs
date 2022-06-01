@@ -1,6 +1,7 @@
-use rocket_dyn_templates::{Template, context};
+use crate::responder::HTMLResponder;
+use rocket_dyn_templates::{context, Template};
 
 #[get("/about")]
-pub fn about() -> Template {
-    Template::render("about", context! { parent: "layout" })
+pub fn about() -> HTMLResponder {
+    Template::render("about", context! { parent: "layout" }).into()
 }
