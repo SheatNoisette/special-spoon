@@ -9,6 +9,7 @@ use crate::endpoints::*;
 mod about;
 mod endpoints;
 mod home;
+mod favicon;
 mod responder;
 
 #[launch]
@@ -17,6 +18,7 @@ fn rocket() -> Rocket<Build> {
         "/",
         routes![
             index,
+            favicon::favicon,
             home::home,
             about::about,
             temperature,
