@@ -1,7 +1,7 @@
 use diesel::Queryable;
 
 #[derive(Queryable)]
-pub struct iot {
+pub struct Iot {
     pub ip: String,
     pub led_status: bool,
     pub temperature: f32,
