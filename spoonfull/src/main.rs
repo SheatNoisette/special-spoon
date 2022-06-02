@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate rocket;
+extern crate diesel;
+extern crate dotenv;
 
 use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
@@ -11,9 +13,15 @@ mod endpoints;
 mod home;
 mod favicon;
 mod responder;
+mod db_model;
+mod db;
 
 #[launch]
 fn rocket() -> Rocket<Build> {
+
+    let conn = db::establish_connection();
+
+
     rocket::build().attach(Template::fairing()).mount(
         "/",
         routes![
