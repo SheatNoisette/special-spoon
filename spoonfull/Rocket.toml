@@ -1,6 +1,3 @@
-[global.databases]
-sqlite_values = { url = "db.sqlite" }
-
 [global.databases.sqlite_values]
 url = "db.sqlite"
 pool_size = 20
