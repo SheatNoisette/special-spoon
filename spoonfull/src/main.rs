@@ -1,37 +1,37 @@
 #[macro_use]
 extern crate rocket;
-extern crate diesel;
-extern crate dotenv;
 
 use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
+use rocket_sync_db_pools::{database, diesel};
 
 use crate::endpoints::*;
 
 mod about;
-mod endpoints;
-mod home;
-mod favicon;
-mod responder;
 mod db_model;
-mod db;
+mod endpoints;
+mod favicon;
+mod home;
+mod responder;
+
+#[database("sqlite_values")]
+pub struct ValueDbConnection(diesel::SqliteConnection);
 
 #[launch]
 fn rocket() -> Rocket<Build> {
-
-    let conn = db::establish_connection();
-
-
-    rocket::build().attach(Template::fairing()).mount(
-        "/",
-        routes![
-            index,
-            favicon::favicon,
-            home::home,
-            about::about,
-            temperature,
-            humidity,
-            led_status
-        ],
-    )
+    rocket::build()
+        .attach(ValueDbConnection::fairing())
+        .attach(Template::fairing())
+        .mount(
+            "/",
+            routes![
+                index,
+                favicon::favicon,
+                home::home,
+                about::about,
+                temperature,
+                humidity,
+                led_status
+            ],
+        )
 }

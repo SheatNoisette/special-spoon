@@ -1,6 +1,6 @@
 use std::fs::File;
 
-const FAVICON_PATH : &'static str = "res/favicon.ico";
+const FAVICON_PATH: &'static str = "res/favicon.ico";
 
 #[get("/favicon.ico")]
 pub fn favicon() -> Option<File> {
