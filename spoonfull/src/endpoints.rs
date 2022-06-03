@@ -2,51 +2,18 @@ use crate::ValueDbConnection;
 use diesel::prelude::*;
 use rocket::{
     response::{status, Redirect},
-    serde::{json::Json, Deserialize, Serialize},
+    serde::json::Json,
 };
 use uuid::Uuid;
 
-use dto::{HumidityData, LedStatusData, TemperatureData};
+use dto::data;
+use dto::payload;
+use dto::payload::DeviceIdentity;
 
 use crate::db_model::{IotHumidity, IotLed, IotTemperature};
 use crate::db_schema::*;
 
 mod dto;
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct DeviceIdentity {
-    pub ip: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct HumidityPayload {
-    identity: DeviceIdentity,
-    humidity: f32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct TemperaturePayload {
-    identity: DeviceIdentity,
-    temperature: f32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct LedPayload {
-    identity: DeviceIdentity,
-    status: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(crate = "rocket::serde")]
-pub struct IotDataPayload {
-    temperature: Vec<TemperatureData>,
-    humidity: Vec<HumidityData>,
-    led: Vec<LedStatusData>,
-}
 
 #[get("/")]
 pub async fn index() -> Redirect {
@@ -55,7 +22,7 @@ pub async fn index() -> Redirect {
 
 #[post("/temperature", format = "application/json", data = "<payload>")]
 pub async fn temperature(
-    payload: Json<TemperaturePayload>,
+    payload: Json<payload::Temperature>,
     conn: ValueDbConnection,
 ) -> status::Accepted<()> {
     info!("Received temperature:\n {:?}", payload);
@@ -77,7 +44,7 @@ pub async fn temperature(
 
 #[post("/humidity", format = "application/json", data = "<payload>")]
 pub async fn humidity(
-    payload: Json<HumidityPayload>,
+    payload: Json<payload::Humidity>,
     conn: ValueDbConnection,
 ) -> status::Accepted<()> {
     info!("Received humidity:\n {:?}", payload);
@@ -98,7 +65,7 @@ pub async fn humidity(
 }
 
 #[get("/data/<number>", format = "application/json")]
-pub async fn get_data(number: i64, conn: ValueDbConnection) -> Json<IotDataPayload> {
+pub async fn get_data(number: i64, conn: ValueDbConnection) -> Json<payload::IotData> {
     // Fetch the last 10 temperature values
     let temperature = conn
         .run(move |conn| {
@@ -111,7 +78,7 @@ pub async fn get_data(number: i64, conn: ValueDbConnection) -> Json<IotDataPaylo
         })
         .await
         .into_iter()
-        .map(TemperatureData::from)
+        .map(data::Temperature::from)
         .collect();
 
     let humidity = conn
@@ -125,7 +92,7 @@ pub async fn get_data(number: i64, conn: ValueDbConnection) -> Json<IotDataPaylo
         })
         .await
         .into_iter()
-        .map(HumidityData::from)
+        .map(data::Humidity::from)
         .collect();
 
     let led = conn
@@ -139,18 +106,14 @@ pub async fn get_data(number: i64, conn: ValueDbConnection) -> Json<IotDataPaylo
         })
         .await
         .into_iter()
-        .map(LedStatusData::from)
+        .map(data::LedStatus::from)
         .collect();
 
-    Json(IotDataPayload {
-        temperature,
-        humidity,
-        led,
-    })
+    Json(payload::IotData::new(temperature, humidity, led))
 }
 
 #[post("/led", format = "application/json", data = "<payload>")]
-pub async fn set_led(payload: Json<LedPayload>, conn: ValueDbConnection) -> status::Accepted<()> {
+pub async fn set_led(payload: Json<payload::Led>, conn: ValueDbConnection) -> status::Accepted<()> {
     info!("Received led status:\n {:?}", payload);
     conn.run(move |conn| {
         diesel::insert_into(iot_led::table)
@@ -169,8 +132,8 @@ pub async fn set_led(payload: Json<LedPayload>, conn: ValueDbConnection) -> stat
 }
 
 #[get("/led", format = "application/json")]
-pub async fn led_status(conn: ValueDbConnection) -> Json<LedPayload> {
-    let mut led_status = LedPayload {
+pub async fn led_status(conn: ValueDbConnection) -> Json<payload::Led> {
+    let mut led_status = payload::Led {
         identity: DeviceIdentity { ip: "".to_string() },
         status: false,
     };
