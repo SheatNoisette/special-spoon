@@ -37,7 +37,8 @@ fn rocket() -> Rocket<Build> {
                 temperature,
                 humidity,
                 led_status,
-                set_led
+                set_led,
+                get_data
             ],
         )
 }

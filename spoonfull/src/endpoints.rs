@@ -1,10 +1,12 @@
 use crate::ValueDbConnection;
+use diesel::deserialize::FromSql;
 use diesel::prelude::*;
 use rocket::response::{status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::db_model::*;
 use crate::db_schema::*;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -13,14 +15,14 @@ pub struct DeviceIdentity {
     pub ip: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct HumidityPayload {
     identity: DeviceIdentity,
     humidity: f32,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct TemperaturePayload {
     identity: DeviceIdentity,
@@ -32,6 +34,62 @@ pub struct TemperaturePayload {
 pub struct LedPayload {
     identity: DeviceIdentity,
     status: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "rocket::serde")]
+pub struct TemperatureData {
+    pub temperature: f32,
+    pub date: i64,
+}
+
+impl From<IotTemperature> for TemperatureData {
+    fn from(iot_temperature: IotTemperature) -> Self {
+        TemperatureData {
+            temperature: iot_temperature.temperature,
+            date: iot_temperature.date,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "rocket::serde")]
+pub struct HumidityData {
+    pub humidity: f32,
+    pub date: i64,
+}
+
+impl From<IotHumidity> for HumidityData {
+    fn from(iot_humidity: IotHumidity) -> Self {
+        HumidityData {
+            humidity: iot_humidity.humidity,
+            date: iot_humidity.date,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "rocket::serde")]
+pub struct LedStatusData {
+    pub status: bool,
+    pub date: i64,
+}
+
+impl From<IotLed> for LedStatusData {
+    fn from(iot_led: IotLed) -> Self {
+        LedStatusData {
+            status: iot_led.led_status,
+            date: iot_led.date,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(crate = "rocket::serde")]
+pub struct IotDataPayload {
+    temperature: Vec<TemperatureData>,
+    humidity: Vec<HumidityData>,
+    led: Vec<LedStatusData>,
 }
 
 #[get("/")]
@@ -83,6 +141,66 @@ pub async fn humidity(
     status::Accepted::<()>(None)
 }
 
+#[get("/data", format = "application/json")]
+pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
+    // Query the DB for the latest temperature, led and humidity values
+    let mut payload = IotDataPayload {
+        temperature: Vec::new(),
+        humidity: Vec::new(),
+        led: Vec::new(),
+    };
+
+    // Fetch the last 10 temperature values
+    let temperatures: Vec<TemperatureData> = conn
+        .run(move |conn| {
+            iot_temperature::table
+                .select(iot_temperature::all_columns)
+                .order(iot_temperature::date.desc())
+                .limit(10)
+                .load::<IotTemperature>(conn)
+                .unwrap()
+        })
+        .await
+        .into_iter()
+        .map(|iot_temperature| iot_temperature.into())
+        .collect();
+
+    let humidity: Vec<HumidityData> = conn
+        .run(move |conn| {
+            iot_humidity::table
+                .select(iot_humidity::all_columns)
+                .order(iot_humidity::date.desc())
+                .limit(10)
+                .load::<IotHumidity>(conn)
+                .unwrap()
+        })
+        .await
+        .into_iter()
+        .map(|iot_humidity| iot_humidity.into())
+        .collect();
+
+    let led_status: Vec<LedStatusData> = conn
+        .run(move |conn| {
+            iot_led::table
+                .select(iot_led::all_columns)
+                .order(iot_led::date.desc())
+                .limit(10)
+                .load::<IotLed>(conn)
+                .unwrap()
+        })
+        .await
+        .into_iter()
+        .map(LedStatusData::from)
+        .collect();
+
+    payload.temperature = temperatures;
+    payload.humidity = humidity;
+    payload.led = led_status;
+
+    // Return the payload
+    Json(payload)
+}
+
 #[post("/led", format = "application/json", data = "<payload>")]
 pub async fn set_led(payload: Json<LedPayload>, conn: ValueDbConnection) -> status::Accepted<()> {
     println!("Received led status:\n {:?}", payload);
@@ -110,7 +228,7 @@ pub async fn led_status(conn: ValueDbConnection) -> Json<LedPayload> {
     };
 
     led_status.status = conn
-        .run(move |conn| {
+        .run(|conn| {
             let led_status_query = iot_led::table
                 .select(iot_led::led_status)
                 .order(iot_led::date.desc())
