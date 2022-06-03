@@ -1,0 +1,160 @@
+<div class="row">
+    <div class="column">
+        <h2>Led control</h2>
+        <button id="ledstatus" class="button button-outline">LED ...</button>
+        <p>Enable the led or disable it</p>
+    </div>
+    <div class="column">
+        <h2>Device Status</h2>
+        <p class="updatetime">Last Refresh: Unknown</p>
+        <p class="lasttemperatureupdate">Last Temperature update: Unknown</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="column">
+        <h2>Temperature</h2>
+        <canvas id="temperature_chart"></canvas>
+    </div>
+
+    <div class="column">
+        <h2>Humidity</h2>
+        <canvas id="humidity_chart"></canvas>
+    </div>
+</div>
+
+<script>
+
+    var temperatureCtx = document.getElementById('temperature_chart').getContext('2d');
+    var humidityCtx = document.getElementById('humidity_chart').getContext('2d');
+    var ledStatus = false;
+
+    temperatureChart = new Chart(temperatureCtx, {
+        type: 'line',
+        data: {
+            labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+            datasets: [{
+                label: 'Temperature',
+                data: [65, 59, 80, 81, 56, 55, 40, 32, 30, 10],
+                fill: true,
+                borderColor: 'rgb(240, 80, 80)',
+                tension: 0.1
+            }]
+        }
+    });
+
+    var humidityChart = new Chart(humidityCtx, {
+        type: 'line',
+        data: {
+            labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+            datasets: [{
+                label: 'Humidity',
+                data: [65, 59, 80, 81, 56, 55, 40, 32, 30, 10],
+                fill: true,
+                borderColor: 'rgb(20, 80, 240)',
+                tension: 0.1
+            }]
+        }
+    });
+
+    function convertUnixToDateString(epoch) {
+        var date = new Date(epoch * 1000);
+        return date.toLocaleString();
+    }
+
+    function updateChart(chart, data, labels) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = data;
+        chart.update();
+    }
+
+    function updateButton(button, isOn) {
+        if (isOn) {
+            button.innerHTML = "LED OFF";
+            button.classList.add("button-primary");
+            button.classList.remove("button-outline");
+        } else {
+            button.innerText = "LED ON";
+            button.classList.remove("button-primary");
+            button.classList.add("button-outline");
+        }
+    }
+
+    // fetch the led status from /led endpoint
+    async function fetchLedStatus() {
+        const response = await fetch('/led');
+        const data = await response.json();
+        ledStatus = data.status;
+        updateButton(document.getElementById('ledstatus'), data.status);
+    }
+
+    // Get current date
+    function lastRefresh() {
+        var lastRefresh = document.getElementsByClassName('updatetime')[0];
+        lastRefresh.innerText = 'Last Refresh: ' + convertUnixToDateString(Date.now() / 1000);
+    }
+
+    // When the button is clicked, toggle the led status
+    document.getElementById('ledstatus').addEventListener('click', function () {
+        fetchLedStatus().then(function () {
+            // Send the new led status to the server using a post on /led/status endpoint
+            fetch('/led', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: "{ { \"identity\":\"server\" }, \"status\": " + !ledStatus + "}"
+        }).then(function (response) {
+            return response.json();
+        }).then(function (data) {
+            ledStatus = data.status;
+            updateButton(document.getElementById('ledstatus'), data.status);
+        });
+        fetchLedStatus();
+        });
+    });
+
+    // Last temperature update from the data
+    function lastTemperatureUpdate(date) {
+        var lastTemperatureUpdate = document.getElementsByClassName('lasttemperatureupdate')[0];
+        lastTemperatureUpdate.innerText = 'Last Temperature update: ' + date;
+    }
+
+    // Get from /data endpoint json data
+    async function fetchData() {
+        const response = await fetch('/data/10');
+        const data = await response.json();
+
+        // Temperature
+        var temperatures_data = [];
+        var temperature_labels = [];
+
+        for (var i = data.temperature.length - 1; i >= 0; i--) {
+            temperatures_data.push(data.temperature[i].temperature);
+            temperature_labels.push(convertUnixToDateString(data.temperature[i].date));
+        }
+
+        // Humidity
+        var humidity_data = [];
+        var humidity_labels = [];
+
+        for (var i = data.humidity.length - 1; i >= 0; i--) {
+            humidity_data.push(data.humidity[i].humidity);
+            humidity_labels.push(convertUnixToDateString(data.humidity[i].date));
+        }
+
+        lastRefresh();
+        lastTemperatureUpdate(temperature_labels[0]);
+        updateChart(temperatureChart, temperatures_data, temperature_labels);
+        updateChart(humidityChart, humidity_data, humidity_labels);
+    }
+
+    fetchData();
+    fetchLedStatus();
+
+    // Refresh every 5 seconds
+    setInterval(fetchData, 5000);
+
+    // Fetch led status
+    // setInterval(fetchLedStatus, 2000);
+</script>
