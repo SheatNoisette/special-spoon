@@ -28,8 +28,4 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    iot_humidity,
-    iot_led,
-    iot_temperature,
-);
+allow_tables_to_appear_in_same_query!(iot_humidity, iot_led, iot_temperature,);

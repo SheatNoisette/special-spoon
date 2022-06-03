@@ -1,8 +1,8 @@
 use crate::ValueDbConnection;
+use diesel::prelude::*;
 use rocket::response::{status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
-use diesel::prelude::*;
 use uuid::Uuid;
 
 use crate::db_schema::*;
@@ -56,7 +56,8 @@ pub async fn temperature(
             ))
             .execute(conn)
             .expect("Error saving temperature into DB");
-    }).await;
+    })
+    .await;
     status::Accepted::<()>(None)
 }
 
@@ -77,15 +78,13 @@ pub async fn humidity(
             ))
             .execute(conn)
             .expect("Error saving humidity into DB");
-    }).await;
+    })
+    .await;
     status::Accepted::<()>(None)
 }
 
 #[post("/led", format = "application/json", data = "<payload>")]
-pub async fn set_led(
-    payload: Json<LedPayload>,
-    conn: ValueDbConnection,
-) -> status::Accepted<()> {
+pub async fn set_led(payload: Json<LedPayload>, conn: ValueDbConnection) -> status::Accepted<()> {
     println!("Received led status:\n {:?}", payload);
     conn.run(move |conn| {
         diesel::insert_into(iot_led::table)
@@ -98,33 +97,29 @@ pub async fn set_led(
             ))
             .execute(conn)
             .expect("Error saving led into DB");
-    }).await;
+    })
+    .await;
     status::Accepted::<()>(None)
 }
 
 #[get("/led", format = "application/json")]
-pub async fn led_status(
-    conn: ValueDbConnection,
-) -> Json<LedPayload> {
+pub async fn led_status(conn: ValueDbConnection) -> Json<LedPayload> {
     let mut led_status = LedPayload {
-        identity: DeviceIdentity {
-            ip: "".to_string(),
-        },
+        identity: DeviceIdentity { ip: "".to_string() },
         status: false,
     };
-    conn.run(move |conn| {
-        let led_status_query = iot_led::table
-            .select(iot_led::led_status)
-            .order(iot_led::date.desc())
-            .first::<bool>(conn);
-        match led_status_query {
-            Ok(status) => {
-                led_status.status = status;
-            },
-            Err(e) => {
-                println!("Error getting led status: {:?}", e);
-            }
-        }
-    }).await;
+
+    led_status.status = conn
+        .run(move |conn| {
+            let led_status_query = iot_led::table
+                .select(iot_led::led_status)
+                .order(iot_led::date.desc())
+                .first::<bool>(conn);
+            led_status_query.unwrap_or_else(|_| {
+                warn!("Cannot find requested led value");
+                return false;
+            })
+        })
+        .await;
     Json(led_status)
 }

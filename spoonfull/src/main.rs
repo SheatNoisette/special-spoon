@@ -19,7 +19,6 @@ mod responder;
 mod db_model;
 mod db_schema;
 
-
 #[database("sqlite_values")]
 pub struct ValueDbConnection(diesel::SqliteConnection);
 
