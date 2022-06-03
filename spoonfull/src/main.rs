@@ -34,10 +34,10 @@ fn rocket() -> Rocket<Build> {
                 favicon::favicon,
                 home::home,
                 about::about,
-                temperature,
-                humidity,
-                led_status,
-                set_led,
+                temperature::set,
+                humidity::set,
+                led::get,
+                led::set,
                 get_data
             ],
         )
