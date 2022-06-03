@@ -1,14 +1,13 @@
 use crate::ValueDbConnection;
 use rocket::response::{status, Redirect};
 use rocket::serde::json::Json;
-use rocket::serde::Deserialize;
+use rocket::serde::{Deserialize, Serialize};
 use diesel::prelude::*;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::db_schema::*;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct DeviceIdentity {
     pub ip: String,
@@ -28,7 +27,7 @@ pub struct TemperaturePayload {
     temperature: f32,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct LedPayload {
     identity: DeviceIdentity,
@@ -67,14 +66,65 @@ pub async fn humidity(
     conn: ValueDbConnection,
 ) -> status::Accepted<()> {
     println!("Received humidity:\n {:?}", payload);
+    conn.run(move |conn| {
+        diesel::insert_into(iot_humidity::table)
+            .values((
+                iot_humidity::id.eq(Uuid::new_v4().to_string()),
+                iot_humidity::ip.eq(payload.identity.ip.clone()),
+                iot_humidity::humidity.eq(payload.humidity),
+                iot_humidity::protocol.eq("rest"),
+                iot_humidity::date.eq(chrono::Utc::now().naive_utc().timestamp()),
+            ))
+            .execute(conn)
+            .expect("Error saving humidity into DB");
+    }).await;
     status::Accepted::<()>(None)
 }
 
 #[post("/led", format = "application/json", data = "<payload>")]
-pub async fn led_status(
+pub async fn set_led(
     payload: Json<LedPayload>,
     conn: ValueDbConnection,
 ) -> status::Accepted<()> {
     println!("Received led status:\n {:?}", payload);
+    conn.run(move |conn| {
+        diesel::insert_into(iot_led::table)
+            .values((
+                iot_led::id.eq(Uuid::new_v4().to_string()),
+                iot_led::ip.eq(payload.identity.ip.clone()),
+                iot_led::led_status.eq(payload.status),
+                iot_led::protocol.eq("rest"),
+                iot_led::date.eq(chrono::Utc::now().naive_utc().timestamp()),
+            ))
+            .execute(conn)
+            .expect("Error saving led into DB");
+    }).await;
     status::Accepted::<()>(None)
+}
+
+#[get("/led", format = "application/json")]
+pub async fn led_status(
+    conn: ValueDbConnection,
+) -> Json<LedPayload> {
+    let mut led_status = LedPayload {
+        identity: DeviceIdentity {
+            ip: "".to_string(),
+        },
+        status: false,
+    };
+    conn.run(move |conn| {
+        let led_status_query = iot_led::table
+            .select(iot_led::led_status)
+            .order(iot_led::date.desc())
+            .first::<bool>(conn);
+        match led_status_query {
+            Ok(status) => {
+                led_status.status = status;
+            },
+            Err(e) => {
+                println!("Error getting led status: {:?}", e);
+            }
+        }
+    }).await;
+    Json(led_status)
 }
