@@ -140,15 +140,15 @@ pub async fn humidity(
     status::Accepted::<()>(None)
 }
 
-#[get("/data", format = "application/json")]
-pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
+#[get("/data/<number>", format = "application/json")]
+pub async fn get_data(number: i64, conn: ValueDbConnection) -> Json<IotDataPayload> {
     // Fetch the last 10 temperature values
     let temperature = conn
         .run(move |conn| {
             iot_temperature::table
                 .select(iot_temperature::all_columns)
                 .order(iot_temperature::date.desc())
-                .limit(10)
+                .limit(number)
                 .load::<IotTemperature>(conn)
                 .unwrap()
         })
@@ -162,7 +162,7 @@ pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
             iot_humidity::table
                 .select(iot_humidity::all_columns)
                 .order(iot_humidity::date.desc())
-                .limit(10)
+                .limit(number)
                 .load::<IotHumidity>(conn)
                 .unwrap()
         })
@@ -176,7 +176,7 @@ pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
             iot_led::table
                 .select(iot_led::all_columns)
                 .order(iot_led::date.desc())
-                .limit(10)
+                .limit(number)
                 .load::<IotLed>(conn)
                 .unwrap()
         })
