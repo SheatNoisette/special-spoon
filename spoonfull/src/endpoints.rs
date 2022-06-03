@@ -101,7 +101,7 @@ pub async fn temperature(
     payload: Json<TemperaturePayload>,
     conn: ValueDbConnection,
 ) -> status::Accepted<()> {
-    println!("Received temperature:\n {:?}", payload);
+    info!("Received temperature:\n {:?}", payload);
     conn.run(move |conn| {
         diesel::insert_into(iot_temperature::table)
             .values((
@@ -123,7 +123,7 @@ pub async fn humidity(
     payload: Json<HumidityPayload>,
     conn: ValueDbConnection,
 ) -> status::Accepted<()> {
-    println!("Received humidity:\n {:?}", payload);
+    info!("Received humidity:\n {:?}", payload);
     conn.run(move |conn| {
         diesel::insert_into(iot_humidity::table)
             .values((
@@ -194,7 +194,7 @@ pub async fn get_data(number: i64, conn: ValueDbConnection) -> Json<IotDataPaylo
 
 #[post("/led", format = "application/json", data = "<payload>")]
 pub async fn set_led(payload: Json<LedPayload>, conn: ValueDbConnection) -> status::Accepted<()> {
-    println!("Received led status:\n {:?}", payload);
+    info!("Received led status:\n {:?}", payload);
     conn.run(move |conn| {
         diesel::insert_into(iot_led::table)
             .values((
