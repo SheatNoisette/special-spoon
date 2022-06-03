@@ -226,7 +226,7 @@ pub async fn led_status(conn: ValueDbConnection) -> Json<LedPayload> {
                 .first::<bool>(conn);
             led_status_query.unwrap_or_else(|_| {
                 warn!("Cannot find requested led value");
-                return false;
+                false
             })
         })
         .await;
