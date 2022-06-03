@@ -1,9 +1,6 @@
 use crate::ValueDbConnection;
 use diesel::prelude::*;
-use rocket::{
-    response::Redirect,
-    serde::json::Json,
-};
+use rocket::{response::Redirect, serde::json::Json};
 
 use dto::data;
 use dto::payload;
@@ -12,9 +9,9 @@ use crate::db_model::{IotHumidity, IotLed, IotTemperature};
 use crate::db_schema::*;
 
 mod dto;
+pub mod humidity;
 pub mod led;
 pub mod temperature;
-pub mod humidity;
 
 #[get("/")]
 pub async fn index() -> Redirect {
