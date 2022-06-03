@@ -1,4 +1,4 @@
-use diesel::{sql_types::*, Queryable};
+use diesel::Queryable;
 
 #[derive(Queryable)]
 pub struct IotTemperature {

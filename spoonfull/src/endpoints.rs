@@ -1,5 +1,4 @@
 use crate::ValueDbConnection;
-use diesel::deserialize::FromSql;
 use diesel::prelude::*;
 use rocket::response::{status, Redirect};
 use rocket::serde::json::Json;
@@ -143,15 +142,8 @@ pub async fn humidity(
 
 #[get("/data", format = "application/json")]
 pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
-    // Query the DB for the latest temperature, led and humidity values
-    let mut payload = IotDataPayload {
-        temperature: Vec::new(),
-        humidity: Vec::new(),
-        led: Vec::new(),
-    };
-
     // Fetch the last 10 temperature values
-    let temperatures: Vec<TemperatureData> = conn
+    let temperature = conn
         .run(move |conn| {
             iot_temperature::table
                 .select(iot_temperature::all_columns)
@@ -162,10 +154,10 @@ pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
         })
         .await
         .into_iter()
-        .map(|iot_temperature| iot_temperature.into())
+        .map(TemperatureData::from)
         .collect();
 
-    let humidity: Vec<HumidityData> = conn
+    let humidity = conn
         .run(move |conn| {
             iot_humidity::table
                 .select(iot_humidity::all_columns)
@@ -176,10 +168,10 @@ pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
         })
         .await
         .into_iter()
-        .map(|iot_humidity| iot_humidity.into())
+        .map(HumidityData::from)
         .collect();
 
-    let led_status: Vec<LedStatusData> = conn
+    let led = conn
         .run(move |conn| {
             iot_led::table
                 .select(iot_led::all_columns)
@@ -193,12 +185,11 @@ pub async fn get_data(conn: ValueDbConnection) -> Json<IotDataPayload> {
         .map(LedStatusData::from)
         .collect();
 
-    payload.temperature = temperatures;
-    payload.humidity = humidity;
-    payload.led = led_status;
-
-    // Return the payload
-    Json(payload)
+    Json(IotDataPayload {
+        temperature,
+        humidity,
+        led,
+    })
 }
 
 #[post("/led", format = "application/json", data = "<payload>")]
