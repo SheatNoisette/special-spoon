@@ -2383,6 +2383,7 @@ name = "spoonfull"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "confy",
  "diesel",
  "rocket",
  "rocket_dyn_templates",

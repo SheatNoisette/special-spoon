@@ -7,6 +7,12 @@ extern crate diesel;
 use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
 use rocket_sync_db_pools::database;
+use rocket::yansi::Paint;
+use rocket::log::PaintExt;
+
+use librumqttd::{Broker, Config};
+use std::path::PathBuf;
+use std::thread;
 
 use crate::endpoints::*;
 
@@ -24,7 +30,9 @@ pub struct ValueDbConnection(diesel::SqliteConnection);
 
 #[launch]
 fn rocket() -> Rocket<Build> {
-    rocket::build()
+
+
+    let build = rocket::build()
         .attach(ValueDbConnection::fairing())
         .attach(Template::fairing())
         .mount(
@@ -40,5 +48,19 @@ fn rocket() -> Rocket<Build> {
                 led::set,
                 get_data
             ],
-        )
+        );
+
+    // Spawn mqtt server
+    thread::spawn(|| {
+        info!("{}{}:", Paint::emoji("📶"), Paint::yellow(" MQTT"));
+        info_!("{}: {}", "start", Paint::default("created thread worker"));
+
+        let config: Config = confy::load_path(PathBuf::from("config/rumqttd.conf")).unwrap();
+        info_!("{}: {}", "config", Paint::default("loading configuration"));
+        let output = Broker::new(config).start();
+        info!("{}{}:", Paint::emoji("🛑"), Paint::yellow(" MQTT"));
+        info_!("{}: {}", "broker stopped", Paint::default(format!("{:?}", output)));
+    });
+
+    build
 }
