@@ -94,23 +94,25 @@
         lastRefresh.innerText = 'Last Refresh: ' + convertUnixToDateString(Date.now() / 1000);
     }
 
-    // When the button is clicked, toggle the led status
+    // When the button is clicked, toggle the led status. 
+    // Endpoint /led/on or /led/off using a post resquest
     document.getElementById('ledstatus').addEventListener('click', function () {
         fetchLedStatus().then(function () {
-            // Send the new led status to the server using a post on /led/status endpoint
-            fetch('/led', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: "{ { \"identity\":\"server\" }, \"status\": " + !ledStatus + "}"
-        }).then(function (response) {
-            return response.json();
-        }).then(function (data) {
-            ledStatus = data.status;
-            updateButton(document.getElementById('ledstatus'), data.status);
-        });
-        fetchLedStatus();
+            if (ledStatus) {
+                fetch('/led/off', {
+                    method: 'POST'
+                }).then(function (response) {
+                    updateButton(document.getElementById('ledstatus'), false);
+                    ledStatus = false;
+                });
+            } else {
+                fetch('/led/on', {
+                    method: 'POST'
+                }).then(function (response) {
+                    updateButton(document.getElementById('ledstatus'), true);
+                    ledStatus = true;
+                });
+            }
         });
     });
 

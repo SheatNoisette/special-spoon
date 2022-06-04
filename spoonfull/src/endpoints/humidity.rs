@@ -1,9 +1,6 @@
 use crate::ValueDbConnection;
 use diesel::prelude::*;
-use rocket::{
-    response::status,
-    serde::json::Json,
-};
+use rocket::{response::status, serde::json::Json};
 use uuid::Uuid;
 
 use super::dto::payload;
