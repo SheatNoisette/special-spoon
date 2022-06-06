@@ -17,7 +17,7 @@ pub async fn set(
         diesel::insert_into(iot_humidity::table)
             .values((
                 iot_humidity::id.eq(Uuid::new_v4().to_string()),
-                iot_humidity::ip.eq(payload.identity.ip.clone()),
+                iot_humidity::ip.eq(payload.ip.clone()),
                 iot_humidity::humidity.eq(payload.humidity),
                 iot_humidity::protocol.eq("rest"),
                 iot_humidity::date.eq(chrono::Utc::now().naive_utc().timestamp()),
