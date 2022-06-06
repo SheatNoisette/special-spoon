@@ -15,7 +15,7 @@ pub async fn set(
         diesel::insert_into(iot_temperature::table)
             .values((
                 iot_temperature::id.eq(Uuid::new_v4().to_string()),
-                iot_temperature::ip.eq(payload.identity.ip.clone()),
+                iot_temperature::ip.eq(payload.ip.clone()),
                 iot_temperature::temperature.eq(payload.temperature),
                 iot_temperature::protocol.eq("rest"),
                 iot_temperature::date.eq(chrono::Utc::now().naive_utc().timestamp()),

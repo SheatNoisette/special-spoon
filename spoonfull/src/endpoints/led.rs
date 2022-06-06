@@ -1,11 +1,13 @@
-use super::dto::payload::{self, DeviceIdentity};
 use crate::db_schema::*;
 use crate::ValueDbConnection;
+use super::dto::payload;
+
 use diesel::prelude::*;
 use rocket::response::status::Accepted;
 use rocket::response::status::BadRequest;
 use rocket::{response::status, serde::json::Json};
 use uuid::Uuid;
+
 
 #[post("/led/<status>")]
 pub async fn set(
@@ -42,7 +44,7 @@ pub async fn set(
 #[get("/led", format = "application/json")]
 pub async fn get(conn: ValueDbConnection) -> Json<payload::Led> {
     let mut led_status = payload::Led {
-        identity: DeviceIdentity { ip: "".to_string() },
+        ip: "".to_string(),
         status: false,
     };
 
