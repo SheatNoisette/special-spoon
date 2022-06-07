@@ -6,6 +6,7 @@ from requests import get, post
 import paho.mqtt.client as mqtt
 import threading
 import time
+import toml
 
 MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
@@ -18,7 +19,31 @@ LED_TOPIC = PREFIX_TOPIC + "/led"
 HUMIDITY_TOPIC = PREFIX_TOPIC + "/humidity"
 TEMPERATURE_TOPIC = PREFIX_TOPIC + "/temperature"
 
+REFRESH_SPEED = 4
+
 last_led_status = None
+
+def load_toml_config(toml_file : str):
+    """
+    Load toml config file
+    """
+    global MQTT_BROKER, MQTT_PORT, REST_SERVER, REST_PORT, PREFIX_TOPIC, REFRESH_SPEED
+
+    config = None
+    try:
+        with open(toml_file, "r") as f:
+            config = toml.load(f)
+    except FileNotFoundError:
+        print("=> ERROR:", toml, "not found")
+        return
+
+    # Load config content
+    MQTT_BROKER = config["flan"]["broker_url"]
+    MQTT_PORT = int(config["flan"]["broker_port"])
+    REST_SERVER = config["flan"]["rest_server_url"]
+    REST_PORT = int(config["flan"]["rest_server_port"])
+    PREFIX_TOPIC = config["flan"]["prefix_topic"]
+    REFRESH_SPEED = int(config["flan"]["query_speed_second"])
 
 def get_led_status() -> bool:
     """
@@ -106,16 +131,25 @@ class MonitorLedThread(threading.Thread):
 
     def run(self):
         global last_led_status
+        global REFRESH_SPEED
         while True:
             led_status = get_led_status()
             if led_status != last_led_status:
                 print("=> LED STATUS CHANGED:", led_status)
                 last_led_status = led_status
                 publish_led_status(self.client)
-            time.sleep(4)
+            time.sleep(REFRESH_SPEED)
 
 if __name__ == "__main__":
     print("=> BRIDGE STARTED")
+
+    print("=> LOAD CONFIG")
+    load_toml_config("flan.toml")
+
+    print("=> Broker", MQTT_BROKER, ":", MQTT_PORT)
+    print("=> REST API", REST_SERVER, ":", REST_PORT)
+    print("=> PREFIX TOPIC", PREFIX_TOPIC)
+    print("=> REFRESH SPEED", REFRESH_SPEED, "second(s)")
 
     print("-> TESTING REST API")
     try:

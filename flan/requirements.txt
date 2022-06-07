@@ -3,4 +3,5 @@ charset-normalizer==2.0.12
 idna==3.3
 paho-mqtt==1.6.1
 requests==2.27.1
+toml==0.10.2
 urllib3==1.26.9
