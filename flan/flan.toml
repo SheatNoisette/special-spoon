@@ -1,0 +1,7 @@
+[flan]
+broker_url = "broker.hivemq.com"
+broker_port = 1883
+prefix_topic = "flan-bridge-spoonfull"
+rest_server_url = "localhost"
+rest_server_port = 8000
+query_speed_second = 1

@@ -1,0 +1,4 @@
+[global.databases.sqlite_values]
+url = "db.sqlite"
+pool_size = 20
+timeout = 5
