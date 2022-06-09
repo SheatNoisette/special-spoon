@@ -3,8 +3,8 @@
 #include <DFRobot_DHT11.h>
 
 // Wifi password
-#define WIFI_SSID "Hey"
-#define WIFI_PASSWORD "z8ui9afj"
+#define WIFI_SSID "MYWIFI"
+#define WIFI_PASSWORD "PASSWORD"
 
 #define BROKERID "broker.hivemq.com"
 #define BROKER_PORT 1883
